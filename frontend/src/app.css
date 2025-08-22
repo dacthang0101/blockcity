@@ -1,0 +1,17 @@
+@import 'tailwindcss';
+@plugin '@tailwindcss/forms';
+@plugin '@tailwindcss/typography';
+
+@import '@skeletonlabs/skeleton';
+@import '@skeletonlabs/skeleton/optional/presets';
+@import '@skeletonlabs/skeleton/themes/cerberus';
+
+@source '../node_modules/@skeletonlabs/skeleton-svelte/dist';
+
+.preset-glass-neutral {
+    background: color-mix(in oklab,
+            var(--color-surface-50-950) 30%,
+            transparent);
+    box-shadow: 0 0px 30px color-mix(in oklab, var(--color-surface-50-950) 30%, transparent) inset;
+    backdrop-filter: blur(16px);
+}
