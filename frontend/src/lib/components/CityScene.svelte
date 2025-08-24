@@ -2,7 +2,10 @@
     import { onDestroy, onMount } from "svelte";
     import { Modal } from "@skeletonlabs/skeleton-svelte";
     import * as THREE from "three";
+    import { Box3, Vector3 } from "three";
     import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
+    import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader.js";
+
     import * as purchaseService from "$lib/api/purchase.js";
     import * as userService from "$lib/api/user.js";
     import * as blockService from "$lib/api/block.js";
@@ -10,6 +13,10 @@
     import { toaster } from "$lib/components/toaster.js";
     import _ from "lodash";
     import LoginForm from "$lib/components/LoginForm.svelte";
+    import {
+        createObjectManager,
+        type ObjectManager,
+    } from "./ObjectManager.js";
 
     let { user } = $props();
     let balance = $derived(user.balance);
@@ -17,7 +24,8 @@
 
     let container: HTMLDivElement;
 
-    // let houseModel: THREE.Group | null = null;
+    let houseManager: ObjectManager | null = null;
+    let treeManager: ObjectManager | null = null;
 
     let move = {
         forward: false,
@@ -82,13 +90,9 @@
 
     onMount(async () => {
         setup();
+        await loadModels();
         createEventListeners();
-
         updateBlocksIfNeeded();
-        // blocks = await blockService.list();
-        // _.forEach(blocks, (block: any) => {
-        //     addBlock(block);
-        // });
 
         const isMobileOrTablet = () => {
             // modern way
@@ -205,6 +209,34 @@
         };
 
         animate();
+    }
+
+    async function loadModels() {
+        const houseModel = await loadFbxModel("/3D/home.fbx");
+        houseManager = createObjectManager(houseModel, gridCellSize, 100);
+        scene.add(houseManager.mesh);
+
+        const treeModel = await loadFbxModel("/3D/tree.fbx");
+        treeManager = createObjectManager(treeModel, gridCellSize, 100);
+        scene.add(treeManager.mesh);
+    }
+
+    async function loadFbxModel(url: string) {
+        return new Promise((resolve: any) => {
+            const loader = new FBXLoader();
+            loader.load(url, (object: any) => {
+                // Scale theo gridCellSize (ví dụ fit 1 ô 30x30)
+                const box = new THREE.Box3().setFromObject(object);
+                const size = new THREE.Vector3();
+                box.getSize(size);
+                const maxDim = Math.max(size.x, size.y, size.z);
+                const scaleFactor = gridCellSize / maxDim;
+
+                object.scale.set(scaleFactor, scaleFactor, scaleFactor);
+
+                resolve(object);
+            });
+        });
     }
 
     function bindMobileControls() {
@@ -388,31 +420,55 @@
     }
 
     function addBlock(cell: any) {
-        const boxGeo = new THREE.BoxGeometry(
-            gridCellSize,
-            gridCellSize,
-            gridCellSize,
-        );
-        const boxMat = new THREE.MeshStandardMaterial({
-            color:
-                !cell.user_id || cell.user_id === user.id ? 0x00aaff : 0x00aa00,
-        });
-        const cube = new THREE.Mesh(boxGeo, boxMat);
-        const gridX = cell.x * gridCellSize + gridCellSize / 2;
-        const gridZ = cell.y * gridCellSize + gridCellSize / 2;
-        cube.position.set(gridX, gridCellSize / 2, gridZ);
+        // const gridX = cell.x * gridCellSize + gridCellSize / 2;
+        // const gridZ = cell.y * gridCellSize + gridCellSize / 2;
+        // const house = houseModel.clone(true);
+        // house.position.set(gridX, gridCellSize / 2, gridZ);
+        // scene.add(house);
 
-        scene.add(cube);
-
-        // Thêm viền
-        const edges = new THREE.EdgesGeometry(boxGeo);
-        const lineMat = new THREE.LineBasicMaterial({
-            color: 0x000000,
-        }); // màu viền
-        const line = new THREE.LineSegments(edges, lineMat);
-        line.position.copy(cube.position);
-        scene.add(line);
+        if ((cell.x + cell.y) % 2 === 0) {
+            const houseIdx = houseManager?.addObject(
+                cell.x,
+                cell.y,
+                gridCellSize,
+                Math.random() * Math.PI * 2,
+            );
+        } else {
+            const houseIdx = treeManager?.addObject(
+                cell.x,
+                cell.y,
+                gridCellSize,
+                Math.random() * Math.PI * 2,
+            );
+        }
     }
+
+    // function addBlock(cell: any) {
+    //     // const boxGeo = new THREE.BoxGeometry(
+    //     //     gridCellSize,
+    //     //     gridCellSize,
+    //     //     gridCellSize,
+    //     // );
+    //     // const boxMat = new THREE.MeshStandardMaterial({
+    //     //     color:
+    //     //         !cell.user_id || cell.user_id === user.id ? 0x00aaff : 0x00aa00,
+    //     // });
+    //     // const cube = new THREE.Mesh(boxGeo, boxMat);
+    //     // const gridX = cell.x * gridCellSize + gridCellSize / 2;
+    //     // const gridZ = cell.y * gridCellSize + gridCellSize / 2;
+    //     // cube.position.set(gridX, gridCellSize / 2, gridZ);
+
+    //     // scene.add(cube);
+
+    //     // // Thêm viền
+    //     // const edges = new THREE.EdgesGeometry(boxGeo);
+    //     // const lineMat = new THREE.LineBasicMaterial({
+    //     //     color: 0x000000,
+    //     // }); // màu viền
+    //     // const line = new THREE.LineSegments(edges, lineMat);
+    //     // line.position.copy(cube.position);
+    //     // scene.add(line);
+    // }
 
     function toScreenPosition(position3D: THREE.Vector3, camera: THREE.Camera) {
         const vector = position3D.clone().project(camera);
