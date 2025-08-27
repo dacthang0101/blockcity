@@ -94,20 +94,20 @@
         createEventListeners();
         updateBlocksIfNeeded();
 
-        const isMobileOrTablet = () => {
-            // modern way
-            if (window.matchMedia("(pointer: coarse)").matches) return true;
+        // const isMobileOrTablet = () => {
+        //     // modern way
+        //     if (window.matchMedia("(pointer: coarse)").matches) return true;
 
-            // fallback for some cases
-            return /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-        };
+        //     // fallback for some cases
+        //     return /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+        // };
 
-        isMobile = isMobileOrTablet();
-        if (isMobile) {
-            requestAnimationFrame(() => {
-                bindMobileControls();
-            });
-        }
+        // isMobile = isMobileOrTablet();
+        // if (isMobile) {
+        //     requestAnimationFrame(() => {
+        //         bindMobileControls();
+        //     });
+        // }
     });
 
     onDestroy(() => {
@@ -239,25 +239,6 @@
         });
     }
 
-    function bindMobileControls() {
-        const map = {
-            "btn-up": "forward",
-            "btn-down": "backward",
-            "btn-left": "turnLeft",
-            "btn-right": "turnRight",
-            "btn-u": "up",
-            "btn-d": "down",
-        };
-
-        for (const [id, action] of Object.entries(map)) {
-            const btn = document.getElementById(id)!;
-
-            btn.addEventListener("pointerdown", () => (move[action] = true));
-            btn.addEventListener("pointerup", () => (move[action] = false));
-            btn.addEventListener("pointerleave", () => (move[action] = false)); // khi kéo ngón tay ra ngoài nút
-        }
-    }
-
     const createEventListeners = () => {
         container.addEventListener("click", handleClick);
         window.addEventListener("resize", onResize);
@@ -349,7 +330,7 @@
         }
     }
 
-    async function handleClick(event: MouseEvent) {
+    async function handleClick(event: any) {
         const rect = container.getBoundingClientRect();
         mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
         mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
@@ -401,7 +382,7 @@
                 const gridZ =
                     candidateCells[0].y * gridCellSize + gridCellSize / 2;
                 showMoneyFly(
-                    100,
+                    1000,
                     new THREE.Vector3(gridX, gridCellSize, gridZ),
                 );
 
@@ -442,33 +423,6 @@
             );
         }
     }
-
-    // function addBlock(cell: any) {
-    //     // const boxGeo = new THREE.BoxGeometry(
-    //     //     gridCellSize,
-    //     //     gridCellSize,
-    //     //     gridCellSize,
-    //     // );
-    //     // const boxMat = new THREE.MeshStandardMaterial({
-    //     //     color:
-    //     //         !cell.user_id || cell.user_id === user.id ? 0x00aaff : 0x00aa00,
-    //     // });
-    //     // const cube = new THREE.Mesh(boxGeo, boxMat);
-    //     // const gridX = cell.x * gridCellSize + gridCellSize / 2;
-    //     // const gridZ = cell.y * gridCellSize + gridCellSize / 2;
-    //     // cube.position.set(gridX, gridCellSize / 2, gridZ);
-
-    //     // scene.add(cube);
-
-    //     // // Thêm viền
-    //     // const edges = new THREE.EdgesGeometry(boxGeo);
-    //     // const lineMat = new THREE.LineBasicMaterial({
-    //     //     color: 0x000000,
-    //     // }); // màu viền
-    //     // const line = new THREE.LineSegments(edges, lineMat);
-    //     // line.position.copy(cube.position);
-    //     // scene.add(line);
-    // }
 
     function toScreenPosition(position3D: THREE.Vector3, camera: THREE.Camera) {
         const vector = position3D.clone().project(camera);
@@ -653,9 +607,71 @@
         authService.logout();
         window.location.reload();
     }
+
+    let startX = 0,
+        startY = 0,
+        startTime = 0;
+    let dragging = false;
+
+    function handleTouchStart(e: any) {
+        const touch = e.touches[0];
+        startX = touch.clientX;
+        startY = touch.clientY;
+        startTime = Date.now();
+        dragging = false;
+    }
+
+    function handleTouchMove(e: any) {
+        const touch = e.touches[0];
+        const dx = touch.clientX - startX;
+        const dy = touch.clientY - startY;
+
+        if (Math.abs(dx) > 30 || Math.abs(dy) > 30) {
+            dragging = true;
+            startX = touch.clientX;
+            startY = touch.clientY;
+            move.forward =
+                move.backward =
+                move.turnLeft =
+                move.turnRight =
+                    false;
+            if (Math.abs(dx) > Math.abs(dy)) {
+                if (dx > 0) {
+                    move.turnRight = true;
+                } else {
+                    move.turnLeft = true;
+                }
+            } else {
+                if (dy > 0) {
+                    move.backward = true;
+                } else {
+                    move.forward = true;
+                }
+            }
+        }
+    }
+
+    function handleTouchEnd(e: any) {
+        const dt = Date.now() - startTime;
+        if (!dragging && dt < 300) {
+            const touch = e.changedTouches[0];
+            handleClick(touch);
+        }
+        move.turnRight = false;
+        move.turnLeft = false;
+        move.forward = false;
+        move.backward = false;
+        dragging = false;
+    }
 </script>
 
-<div bind:this={container} class="w-full h-full"></div>
+<div
+    bind:this={container}
+    ontouchstart={handleTouchStart}
+    ontouchmove={handleTouchMove}
+    ontouchend={handleTouchEnd}
+    class="w-full h-full"
+></div>
 
 <!-- user info -->
 <div class="fixed top-0 right-0">
@@ -689,7 +705,7 @@
 </div>
 
 <!-- mobile control -->
-{#if isMobile}
+<!-- {#if isMobile}
     <div
         id="controls"
         class="fixed bottom-6 left-6 flex flex-col items-center gap-2 select-none"
@@ -732,7 +748,7 @@
             </button>
         </div>
     </div>
-{/if}
+{/if} -->
 
 <!-- confirm buy block -->
 <Modal
