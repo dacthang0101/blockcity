@@ -46,7 +46,7 @@
     const gridCellSize = 30; // Mỗi ô lưới kích thước 1x1
     const gridNumCells = 3000; // Số ô trên mỗi chiều
     const gridTotalSize = gridCellSize * gridNumCells; // Tổng kích thước lưới
-    const gridLineColor = 0x888888;
+    const gridLineColor = 0x333333; // 0x79b9d3;
 
     // === CAMERA CONFIGURATION ===
     const CAMERA_CONFIG = {
@@ -118,6 +118,9 @@
         // Setup scene
         scene = new THREE.Scene();
 
+        // Bầu trời màu xanh
+        scene.background = new THREE.Color(0x87ceeb); // Sky blue
+
         // Camera góc nghiêng (nhìn từ trên chếch xuống)
         camera = new THREE.PerspectiveCamera(
             CAMERA_CONFIG.fov,
@@ -129,39 +132,56 @@
         camera.position.set(0, CAMERA_CONFIG.height, 0);
         camera.lookAt(0, 0, 0);
 
-        // Loader
-        // const loader = new GLTFLoader();
-        // loader.load("/3D/low_poly_sweet_home.glb", (gltf: any) => {
-        //     houseModel = gltf.scene;
-        // });
-
         // Renderer
         renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(container.clientWidth, container.clientHeight);
         container.appendChild(renderer.domElement);
 
         // Grid
-        const gridHelper = new THREE.GridHelper(
-            gridTotalSize,
-            gridNumCells,
-            gridLineColor,
-            gridLineColor,
-        );
-        const material = gridHelper.material as THREE.Material;
-        material.transparent = true;
-        material.opacity = 0.15;
-        scene.add(gridHelper);
+        // const gridHelper = new THREE.GridHelper(
+        //     gridTotalSize,
+        //     gridNumCells,
+        //     gridLineColor,
+        //     gridLineColor,
+        // );
+        // const material = gridHelper.material as THREE.Material;
+
+        // if (Array.isArray(gridHelper.material)) {
+        //     gridHelper.material.forEach((m: any) => {
+        //         m.depthTest = false; // không so sánh z-buffer
+        //         m.depthWrite = false; // không ghi vào z-buffer
+        //         m.transparent = true;
+        //         m.opacity = 0.15;
+        //     });
+        // } else {
+        //     material.transparent = true;
+        //     material.opacity = 0.15;
+        //     gridHelper.material.depthTest = false;
+        //     gridHelper.material.depthWrite = false;
+        // }
+        // scene.add(gridHelper);
 
         // Mặt phẳng vô hình để bắt raycast từ camera
         const planeGeometry = new THREE.PlaneGeometry(10000, 10000);
-        const planeMaterial = new THREE.MeshBasicMaterial({ visible: false });
+        // const planeMaterial = new THREE.MeshBasicMaterial({
+        //     visible: false,
+        //     color: 0xffffff,
+        // });
+        const planeMaterial = new THREE.MeshBasicMaterial({
+            color: 0xffffff,
+            side: THREE.DoubleSide, // để nhìn được cả 2 mặt
+        });
         plane = new THREE.Mesh(planeGeometry, planeMaterial);
         plane.rotateX(-Math.PI / 2); // Quay mặt phẳng nằm ngang
         scene.add(plane);
 
-        // Light
-        const ambientLight = new THREE.AmbientLight(0xffffff, 1); // màu trắng, cường độ = 1
-        scene.add(ambientLight);
+        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 1);
+        hemiLight.position.set(0, 200, 0);
+        scene.add(hemiLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(100, 200, 100);
+        scene.add(dirLight);
 
         let prevTime = performance.now();
         const animate = () => {
@@ -703,52 +723,6 @@
         {/if}
     </div>
 </div>
-
-<!-- mobile control -->
-<!-- {#if isMobile}
-    <div
-        id="controls"
-        class="fixed bottom-6 left-6 flex flex-col items-center gap-2 select-none"
-    >
-        <button
-            id="btn-up"
-            class="opacity-75 w-14 h-14 flex items-center justify-center rounded-full
-           bg-gray-800 text-white text-2xl shadow-lg active:translate-y-0.5
-           active:shadow-inner transition"
-        >
-            ⬆
-        </button>
-
-        <div class="flex gap-2">
-            <button
-                id="btn-left"
-                class="opacity-75 w-14 h-14 flex items-center justify-center rounded-full
-             bg-gray-800 text-white text-2xl shadow-lg active:translate-y-0.5
-             active:shadow-inner transition"
-            >
-                ⬅
-            </button>
-
-            <button
-                id="btn-down"
-                class="opacity-75 w-14 h-14 flex items-center justify-center rounded-full
-             bg-gray-800 text-white text-2xl shadow-lg active:translate-y-0.5
-             active:shadow-inner transition"
-            >
-                ⬇
-            </button>
-
-            <button
-                id="btn-right"
-                class="opacity-75 w-14 h-14 flex items-center justify-center rounded-full
-             bg-gray-800 text-white text-2xl shadow-lg active:translate-y-0.5
-             active:shadow-inner transition"
-            >
-                ➡
-            </button>
-        </div>
-    </div>
-{/if} -->
 
 <!-- confirm buy block -->
 <Modal
